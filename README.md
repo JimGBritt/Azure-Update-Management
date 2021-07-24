@@ -4,9 +4,13 @@ This documentation is meant to provide a guide to the use of the scripts sourced
 
 ## Topics Covered
 
-- [Overview of Create-AzDiagPolicy.PS1](./README.md#overview-of-create-azdiagpolicyps1) 
-- [Overview of Trigger-PolicyEvaluation.PS1](./README.md#overview-of-trigger-policyEvaluationps1) 
-- [Overview of Trigger-PolicyInitiativeRemediation.PS1](./README.md#overview-of-trigger-policyinitiativeremediationps1)
+- [Flow Diagram](./README.md#flow-diagram)
+- [Overview of Create-azUpdatePatchDeploymentList.ps1](./README.md#overview-of-create-azupdatepatchdeploymentlistps1)
+    - [About the script (Create-azUpdatePatchDeploymentList.ps1)](./README.md#about-the-script-create-azupdatepatchdeploymentlistps1)
+    - [Reviewing Available Parameters](./README.md#reviewing-available-parameters)
+    - [Executing the Script (Examples)](./README.md#executing-the-script-examples)
+    - [Fully Prompted Execution of Create-azUpdatePatchDeploymentList.ps1](./README.md#fully-prompted-execution-of-create-azupdatepatchdeploymentlistps1)
+- [Leveraging the Azure Automation Runbook Wrapper Example](./README.md#leveraging-the-azure-automation-runbook-wrapper-example)
 
 **UPDATES!**</span> - July 22, 2021
 
@@ -31,8 +35,7 @@ This documentation is meant to provide a guide to the use of the scripts sourced
 
 ### About the Script (Create-azUpdatePatchDeploymentList.ps1)
 
-**Create-azUpdatePatchDeploymentList.ps1** is a script that creates .....
-
+**Create-azUpdatePatchDeploymentList.ps1** is a script that automates the creation of an Azure Update Management Scheduled Configuration leveraging a source and target construct to support creation of a pre-prod and prod update schedule configuration.  Utilize the scripts in this repository to automate the creation of an update management schedule for pre-prod and prod to ensure that patches can be tested in your pre-production environment in advance of deployment to production.  The parameters provided in the primary script **Create-azUpdatePatchDeploymentList.ps1** are meant to provide further flexiblity on creation of your target and source Azure Update Management scheduled configurations.
 ### Reviewing Available Parameters
 
 Parameters are available with this script to help customize the experience and remove all prompting during execution. These parameters can be provided in the wrapper runbook to ensure it executes without issue on a schedule or on demand.
