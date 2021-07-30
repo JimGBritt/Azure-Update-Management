@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 1.2
+.VERSION 1.3
 
 .GUID 848f7086-8a09-4f63-a7a9-f0c9b2d612b9
 
@@ -26,10 +26,9 @@ https://aka.ms/JimBritt
 .EXTERNALSCRIPTDEPENDENCIES 
 
 .RELEASENOTES
-July 7, 2021 1.2
-    Resolved some logic issues related to Linux Category Assignments
-    A Huge Thank you to Manjeet Bavage (Consultant at Microsoft) for leaning in and providing some additional testing and updates
-    to help resolve a breaking bug for Linux.  
+July 30, 2021 1.3
+    Added additional logic to create a configuration but disable the schedule.
+    Again, a Huge Thank you to Manjeet Bavage (Consultant at Microsoft) for leaning in and providing some additional testing and recommendations on improvements    
 #>
 
 <#  
@@ -134,6 +133,10 @@ This script meant to help you automate the creation of a production Azure Update
     When provided, this will allow the script to run silently without prompting 
     All Parameters need to have proper values to succeed
 
+.PARAMETER ScheduleDisabled
+    When provided, this will create the configuration but disable the schedule
+    Can be re-enabled in the portal under schedules or via PowerShell
+
 .EXAMPLE
 .\Create-azUpdatePatchDeploymentList.ps1 -SoftwareUpdateScheduleName "Linux Update" `
     -TargetOS Linux `
@@ -161,6 +164,20 @@ This script meant to help you automate the creation of a production Azure Update
     -duration (New-TimeSpan -Hours 4) `
     -WeekInterval 3 
   This example adds the option of specifying tags to add to your Azure Query for targeting
+
+.\Create-azUpdatePatchDeploymentList.ps1 -SoftwareUpdateScheduleName "Linux Update" `
+    -TargetOS Linux `
+    -tags @{PatchWindow = "SaturdayMorning";ENV = "PROD"} `
+    -StartTime '03/15/2020' `
+    -AAAcountName AzureAutoEast `
+    -AAResourceGroupName OI-Default-East-US `
+    -WSID b571a98c-6828-4045-bb5f-857543f2a9e3 `
+    -queryFilterOperator any `
+    -DaysOfWeek "Sunday","Monday" `
+    -duration (New-TimeSpan -Hours 4) `
+    -WeekInterval 3 `
+    -ScheduleDisabled
+  This example adds the option of creating the configuration but disabling the schedule
 
 .EXAMPLE
 .\Create-AzUpdatePatchDeploymentList.ps1 -SoftwareUpdateScheduleName "Windows Update" `
@@ -211,9 +228,12 @@ This script meant to help you automate the creation of a production Azure Update
 
 .NOTES
    AUTHOR: Jim Britt Senior Program Manager - Azure CXP API
-   LASTEDIT: July 7, 2021 1.2
-    Resolved some logic issues related to Linux Category Assignments
+   LASTEDIT: July 30, 2021 1.3
+    Added additional logic to create a configuration but disable the schedule.
+    Again, a Huge Thank you to Manjeet Bavage (Consultant at Microsoft) for leaning in and providing some additional testing and recommendations on improvements    
     
+    July 7, 2021 1.2
+    Resolved some logic issues related to Linux Category Assignments
     A Huge Thank you to Manjeet Bavage (Consultant at Microsoft) for leaning in and providing some additional testing and updates
     to help resolve a breaking bug for Linux.  
     
@@ -224,8 +244,10 @@ This script meant to help you automate the creation of a production Azure Update
    Initial
 
 .LINK
-    This script posted to and discussed at the following locations:PowerShell Gallery    	
+    This script posted to and discussed at the following locations:PowerShell Gallery & GitHub    	
     https://aka.ms/JimBritt
+    https://github.com/JimGBritt/Azure-Update-Management
+    https://www.powershellgallery.com/packages/AUM-PatchDeployment-RunBook-Wrapper
 #>
 
 param
@@ -361,8 +383,13 @@ param
     # Expiration of the Azure Update Management Schedule
     [Parameter(Mandatory=$false)]
     [System.DateTimeOffset]$ExpiryTime,
-    [switch]$force = $false
-)
+    [switch]$force = $false,
+
+    # Create the Azure Update Management Schedule but disable it
+    [Parameter(Mandatory=$false)]
+    [switch]$ScheduleDisabled = $false
+
+    )
 function Add-IndexNumberToArray (
     [Parameter(Mandatory=$True)]
     [array]$array
@@ -881,7 +908,7 @@ if ($Force -OR $PSCmdlet.ShouldContinue("This operation will create an Azure Upd
     if($TargetOS -eq "Windows")
     {
         # Setup for Windows OS 
-        $Null = New-AzAutomationSoftwareUpdateConfiguration -ResourceGroupName $AAResourceGroupName `
+        $Schedule = New-AzAutomationSoftwareUpdateConfiguration -ResourceGroupName $AAResourceGroupName `
         -AutomationAccountName $AAAcountName `
         -Schedule $Schedule `
         -Windows `
@@ -898,7 +925,7 @@ if ($Force -OR $PSCmdlet.ShouldContinue("This operation will create an Azure Upd
     }
     elseif ($TargetOS -eq "Linux") {
         # Setup for Linux OS (note different parameters)
-        $Null = New-AzAutomationSoftwareUpdateConfiguration -ResourceGroupName $AAResourceGroupName `
+        $Schedule = New-AzAutomationSoftwareUpdateConfiguration -ResourceGroupName $AAResourceGroupName `
         -AutomationAccountName $AAAcountName `
         -Schedule $Schedule `
         -Linux `
@@ -913,7 +940,21 @@ if ($Force -OR $PSCmdlet.ShouldContinue("This operation will create an Azure Upd
         -RebootSetting $RebootOptions
         write-host "Creating / Updating the Target Azure Update Management Deployment Schedule based on ""$SoftwareUpdateScheduleName"" for Linux" -ForegroundColor Cyan
     }
+    if($ScheduleDisabled)
+    {
+        write-host "You opted to disable the schedule once creating this configuration!" -ForegroundColor Yellow
+        try{
+            $AASchedule = Get-AzAutomationSchedule -ResourceGroupName $AAResourceGroupName -AutomationAccountName $AAAcountName | where-object {$_.Name -match "^$($Schedule.Name)" -and $_.Description -match "^$($Schedule.Description)" }
+        }
+        catch{}
+        try{
+            $Null = Set-AzAutomationSchedule -AutomationAccountName $AAAcountName -Name $AASchedule.Name -IsEnabled $false -ResourceGroupName $AAResourceGroupName
+            write-host "Successfully disabled schedule." -ForegroundColor Green
+        }
+        catch{}
+    }
     Write-Host "Complete!" -ForegroundColor Green
+    
 }
 else
 {
